@@ -68,8 +68,8 @@ Argument order:
     - update laptop
 
 CAVEATS:
-  This program only keeps track of your packages with "yay" on Arch or "apt" on ubuntu. Pull request the
-  project to add support other managers.
+  This program only keeps track of your packages with "pacman" and "yay" on Arch
+  or "apt" on Ubuntu. Pull request the project to add support other managers.
 
 Licenced under the GNU General Public License v2.0:
 https://opensource.org/licenses/gpl-2.0.php
@@ -180,6 +180,38 @@ CopyFiles () {
 }
 
 # ==============================================================================
+# CHOOSE DISTRO
+# ==============================================================================
+# Gets the distro ID string from /etc/os-release and composes the distro
+# specific function call with the distro name and the function prefix, then
+# calls it. It basically holds the distro switches in one place with a kind of
+# lambda function structure if you want to call it that.
+# ------------------------------------------------------------------------------
+# ARGS:
+# - $1 -> String : Operation to compose the function call with
+# - $2 -> String : The system tag
+# ==============================================================================
+
+ChooseDistro () {
+	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
+
+	case "$distro" in
+	arch)
+		operation="$1""Arch"
+	;;
+	ubuntu)
+		operation="$1""Ubuntu"
+	;;
+	*)
+		printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
+	          "$distro"
+	;;
+	esac
+
+	$operation "$2"
+}
+
+# ==============================================================================
 # PREPARE
 # ------------------------------------------------------------------------------
 # Reads a line and creates a directory in the destination directory if required.
@@ -241,14 +273,14 @@ Deploy () {
 # INSTALL PACKAGES
 # ------------------------------------------------------------------------------
 # Reads the appropriate pkglist file and installs the specified packages in the
-# host's system with "yay", the pacman and AUR manager. It allows the user to
-# review the packages they're going to install before doing do. Below this
-# function are all distro subfunctions.
+# host's system with their distro's manager. It allows the user to  review the
+# packages they're going to install before doing do. Below this function are all
+# distro subfunctions.
 # ------------------------------------------------------------------------------
 # ARGS (INSTALL):
 # - $1 -> String : The target system string
 # ------------------------------------------------------------------------------
-# ARGS (INSTALL ARCH):
+# ARGS (INSTALL [DISTRO]):
 # - $1 -> String : The system tag
 # ==============================================================================
 
@@ -270,20 +302,8 @@ Install () {
 		)
 	}
 
-	Confirm "no" "Proceed with the $sysname packages installation" && {
-		case "$distro" in
-		arch)
-			InstallArch "$systag"
-		;;
-		ubuntu)
-			InstallUbuntu "$systag"
-		;;
-		*)
-			printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
-		       	"$distro"
-		;;
-		esac
-	}
+	Confirm "no" "Proceed with the $sysname packages installation" &&
+		ChooseDistro "Install" "$systag"
 }
 
 InstallArch () {
@@ -341,15 +361,18 @@ Pull () {
 # ==============================================================================
 # UPDATE PACKAGES
 # ------------------------------------------------------------------------------
-# Uses "yay", the pacman and AUR manager, to update the appropriate pkglist
-# file with the packages explicitly installed in the host's system.
+# Updates the appropriate pkglist filewith the packages explicitly installed in
+# the host's system using their distro's manager. Below this function are all
+# distro subfunctions.
 # ------------------------------------------------------------------------------
-# ARGS:
+# ARGS (UPDATE):
 # - $1 -> String : The target system string
+# ------------------------------------------------------------------------------
+# ARGS (UPDATE [DISTRO]):
+# - $1 -> String : The system tag
 # ==============================================================================
 
 Update () {
-	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
 	sysname="$1"
 	systag="-$1"
 
@@ -358,33 +381,21 @@ Update () {
 		systag=""
 	}
 
-	case "$distro" in
-		arch)
-			UpdateArch "$sysname" "$systag"
-		;;
-		ubuntu)
-			UpdateUbuntu "$sysname" "$systag"
-		;;
-		*)
-			printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
-		       	"$distro"
-		;;
-	esac
-
+	Confirm "yes" "Update \"$sysname\" package list" &&
+		ChooseDistro "Update" "$systag"
 }
 
 UpdateArch () {
-	Confirm "yes" "Update \"$1\" package list" &&
-		yay -Qe | sed 's/ .*$//g' > "pkglist$2"
+	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
 }
 
 UpdateUbuntu () {
-	if Confirm "yes" "Update \"$1\" package list"; then
-		apt-mark showmanual | sort -u > "manlist"
-		gzip -dc /var/log/installer/initial-status.gz | sed -n 's/^Package: //p' | sort -u > "initlist"
-		comm -23 "manlist" "initlist" >"pkglist$2"
-		rm "manlist" "initlist"
-	fi
+	apt-mark showmanual | sort -u > "manlist"
+	gzip -dc /var/log/installer/initial-status.gz \
+		| sed -n 's/^Package: //p' \
+		| sort -u > "initlist"
+	comm -23 "manlist" "initlist" >"pkglist$1"
+	rm "manlist" "initlist"
 }
 
 # ==============================================================================
