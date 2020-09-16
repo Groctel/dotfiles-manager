@@ -68,7 +68,7 @@ Argument order:
     - update laptop
 
 CAVEATS:
-  This program only keeps track of your packages with "yay". Pull request the
+  This program only keeps track of your packages with "yay" on Arch or "apt" on ubuntu. Pull request the
   project to add support other managers.
 
 Licenced under the GNU General Public License v2.0:
@@ -275,6 +275,9 @@ Install () {
 		arch)
 			InstallArch "$systag"
 		;;
+		ubuntu)
+			InstallUbuntu "$systag"
+		;;
 		*)
 			printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
 		       	"$distro"
@@ -298,6 +301,13 @@ InstallArch () {
 		    --needed -S - < "pkglist$1"
 	else
 		sudo pacman --noconfirm -S - < "pkglist$1"
+	fi
+}
+
+InstallUbuntu () {
+	if Confirm "yes" "Install with \"apt\" package manager"; then
+		git --version 1>/dev/null 2>&1 || sudo apt install git -y
+		xargs sudo apt install -y < "pkglist$1"
 	fi
 }
 
@@ -339,6 +349,7 @@ Pull () {
 # ==============================================================================
 
 Update () {
+	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
 	sysname="$1"
 	systag="-$1"
 
@@ -347,8 +358,33 @@ Update () {
 		systag=""
 	}
 
-	Confirm "yes" "Update \"$sysname\" package list" &&
-	yay -Qe | sed 's/ .*$//g' > "pkglist$systag"
+	case "$distro" in
+		arch)
+			UpdateArch "$sysname" "$systag"
+		;;
+		ubuntu)
+			UpdateUbuntu "$sysname" "$systag"
+		;;
+		*)
+			printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
+		       	"$distro"
+		;;
+	esac
+
+}
+
+UpdateArch () {
+	Confirm "yes" "Update \"$1\" package list" &&
+		yay -Qe | sed 's/ .*$//g' > "pkglist$2"
+}
+
+UpdateUbuntu () {
+	if Confirm "yes" "Update \"$1\" package list"; then
+		apt-mark showmanual | sort -u > "manlist"
+		gzip -dc /var/log/installer/initial-status.gz | sed -n 's/^Package: //p' | sort -u > "initlist"
+		comm -23 "manlist" "initlist" >"pkglist$2"
+		rm "manlist" "initlist"
+	fi
 }
 
 # ==============================================================================
