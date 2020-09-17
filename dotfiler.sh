@@ -9,6 +9,24 @@
 # READ THE LICENCE HERE: https://opensource.org/licenses/gpl-2.0.php
 # ==============================================================================
 
+# ==============================================================================
+# Init
+# ------------------------------------------------------------------------------
+# Creates initial config directory and if the directory do not exist: useful
+# for a new user
+# ==============================================================================
+
+[ ! -d "$HOME/.dotfiler/" ] && mkdir "$HOME/.dotfiler/"
+confDir="$HOME/.dotfiler"
+[ ! -d "$confDir/files/" ] && mkdir "$HOME/.dotfiler/files"
+
+
+# ==============================================================================
+# Functions
+# ------------------------------------------------------------------------------
+# The following functions are defined to be used during the program.
+# ==============================================================================
+
 Help () {
 cat << EOF
 Usage: dotfiler.sh [-h] (-[dipu])+ [system-tags]
@@ -32,8 +50,8 @@ System tags:
   If no system was specified, the default system "" will be used.
 
 Filelist file:
-  Dotfiler needs a filelist file to keep track of the files in your system. This
-  file should be named "filelist" by default or "filelist-SYSTEM" for an
+  Dotfiler needs a filelist file in ~/.dotfiler to keep track of the files in 
+  your system. This file should be named "filelist" by default or "filelist-SYSTEM" for an
   specific system, e.g. "filelist-desktop".
   This file keeps track of your dotfiles using the following syntax:
   - Regular files: The path to the file from ~/.
@@ -43,14 +61,14 @@ Filelist file:
     .local/share/fonts/*
 
 Pkglist file:
-  Dotfiler keeps tracks of your installed packages in a pkglist file that
-  follows the same naming conventions as the filelist file but does not need to
+  Dotfiler keeps tracks of your installed packages in a pkglist file in ~/.dotfiler 
+  that follows the same naming conventions as the filelist file but does not need to
   be explicitly created by the user. To keep it simple, it only tracks the
   packages explicitly installed by the user.
 
 Deplist file:
-  You can store some commands to be run by Dotfiler in a deplist file that
-  follows the same naming conventions as the filelist and pkglist files.
+  You can store some commands to be run by Dotfiler in a deplist file in ~/.dotfiler
+  that follows the same naming conventions as the filelist and pkglist files.
   Commands are parsed line by line and must not contain linefeeds. For example,
   these are two valid lines containing commands:
     curl -fLo \$HOME/.antigen.zsh git.io/antigen
@@ -76,6 +94,26 @@ https://opensource.org/licenses/gpl-2.0.php
 https://github.com/Groctel/dotfiles-manager
 EOF
 }
+}
+
+# ==============================================================================
+# CREATEFILELIST
+# ------------------------------------------------------------------------------
+# Prompts the user to create a filelist upon the absence of a filelist
+# ------------------------------------------------------------------------------
+# RETURNS:
+# Exit value of the editor
+# ==============================================================================
+
+CreateFileList () {
+	Confirm "yes" "Create a list of dotfiles to keep track of" && {
+		vi "$confDir/filelist" || (
+				printf "\033[1;32m:: \033[0mSelect your editor: "
+				read -r editor
+				$editor "$confDir/filelist" || exit 1
+		)
+	}
+	
 }
 
 # ==============================================================================
@@ -176,7 +214,7 @@ CopyFiles () {
 	while read -r line; do
 		printf "\033[1;32m -> \033[0m%s %s\n" "$4" "$line";
 		cp -r "$2/"$line "$(Prepare "$line" "$3/" "$5")"
-	done < "filelist$1"
+	done < "$confDir/filelist$1"
 }
 
 # ==============================================================================
@@ -265,7 +303,7 @@ Deploy () {
 		Confirm "no" "Overwrite existing $sysname files" || overwrite=".new"
 
 		printf "\033[1;35m==> \033[0;1mProcessing %s files\n" "$sysname"
-		CopyFiles "$systag" "files$systag" "$HOME" "Deploying" "$overwrite"
+		CopyFiles "$systag" "$confDir/files$systag" "$HOME" "Deploying" "$overwrite"
 	}
 }
 
@@ -295,10 +333,10 @@ Install () {
 	}
 
 	Confirm "yes" "Review packages list (it will be permanently modified)" && {
-		vi "pkglist$systag" || (
+		vi "$confDir/pkglist$systag" || (
 			printf "\033[1;32m:: \033[0mSelect your editor: "
 			read -r editor
-			$editor "pkglist$systag" || exit 1
+			$editor "$confDir/pkglist$systag" || exit 1
 		)
 	}
 
@@ -318,16 +356,16 @@ InstallArch () {
 		}
 
 		yay --noconfirm --answerclean All --answerdiff None --answeredit None \
-		    --needed -S - < "pkglist$1"
+		    --needed -S - < "$confDir/pkglist$1"
 	else
-		sudo pacman --noconfirm -S - < "pkglist$1"
+		sudo pacman --noconfirm -S - < "$confDir/pkglist$1"
 	fi
 }
 
 InstallUbuntu () {
 	if Confirm "yes" "Install with \"apt\" package manager"; then
 		git --version 1>/dev/null 2>&1 || sudo apt install git -y
-		xargs sudo apt install -y < "pkglist$1"
+		xargs sudo apt install -y < "$confDir/pkglist$1"
 	fi
 }
 
@@ -354,7 +392,7 @@ Pull () {
 		printf "\033[1;35m==> \033[0;1mProcessing \"%s\" files\n" "$sysname"
 
 		rm -rf "files$systag" && mkdir "files$systag"
-		CopyFiles "$systag" "$HOME" "files$systag" "Pulling"
+		CopyFiles "$systag" "$HOME" "$confDir/files$systag" "Pulling"
 	}
 }
 
@@ -386,7 +424,7 @@ Update () {
 }
 
 UpdateArch () {
-	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
+	yay -Qe | sed 's/ .*$//g' > "$confDir/pkglist$1"
 }
 
 UpdateUbuntu () {
@@ -394,7 +432,7 @@ UpdateUbuntu () {
 	gzip -dc /var/log/installer/initial-status.gz \
 		| sed -n 's/^Package: //p' \
 		| sort -u > "initlist"
-	comm -23 "manlist" "initlist" >"pkglist$1"
+	comm -23 "manlist" "initlist" >"$confDir/pkglist$1"
 	rm "manlist" "initlist"
 }
 
@@ -426,7 +464,7 @@ Extra () {
 
 	while read -r line; do
 		sh -c "$line"
-	done < "deplist$systag"
+	done < "$confDir/deplist$systag"
 
 	stty "$old_stty_settings" 1>/dev/null 2>&1
 }
@@ -442,6 +480,7 @@ operations=""
 systems=""
 
 [ $# -eq 0 ] && Help && exit 1
+[ ! -n "$(find $confDir -maxdepth 1 -name 'filelist*' -print -quit)" ] && CreateFileList
 
 while [ $# -gt 0 ]; do
 	case "$1" in
