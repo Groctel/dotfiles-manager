@@ -88,13 +88,11 @@ EOF
 # ==============================================================================
 
 CreateFileList () {
-	Confirm "yes" "Create a list of dotfiles to keep track of" && {
-		vi "$conf_dir/filelist" || (
-				printf "\033[1;32m:: \033[0mSelect your editor: "
-				read -r editor
-				$editor "$conf_dir/filelist" || exit 1
-		)
-	}
+	vi "$conf_dir/filelist$1" || (
+					printf "\033[1;32m:: \033[0mSelect your editor: "
+					read -r editor
+					$editor "$conf_dir/filelist" || exit 1
+			)
 	
 }
 
@@ -511,6 +509,9 @@ while [ "$operations" != "" ]; do
 	while [ "$local_systems" != "" ]; do
 		current_sys="$(Front "$local_systems")"
 		local_systems="$(Pop "$local_systems")"
+		( [ -f "$conf_dir/filelist$current_sys" ] ) 2>/dev/null || Confirm "yes" "Create a list of dotfiles to keep track of for $current_sys in $conf_dir" && {
+			CreateFileList $current_sys
+		}
 
 		case "$current_op" in
 			configure)
