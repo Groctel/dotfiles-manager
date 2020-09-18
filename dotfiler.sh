@@ -83,13 +83,11 @@ EOF
 # CREATEFILELIST
 # ------------------------------------------------------------------------------
 # Prompts the user to create a filelist upon the absence of a filelist
-# ------------------------------------------------------------------------------
-# RETURNS:
-# Exit value of the editor
 # ==============================================================================
 
 CreateFileList () {
 	Confirm "yes" "Create a list of dotfiles to keep track of for $current_sys in $conf_dir" && {
+		touch "$conf_dir/filelist$1"
 		"${EDITOR:-vi}" "$conf_dir/filelist$1"	
 	}
 }
