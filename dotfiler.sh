@@ -187,10 +187,15 @@ Pop () {
 # ==============================================================================
 
 CopyFiles () {
-	while read -r line; do
-		printf "\033[1;32m -> \033[0m%s %s\n" "$4" "$line";
-		cp -r "$2/"$line "$(Prepare "$line" "$3/" "$5")"
-	done < "$conf_dir/filelist$1"
+	if [ -f "$conf_dir/filelist$1" ]; then
+		while read -r line; do
+			printf "\033[1;32m -> \033[0m%s %s\n" "$4" "$line";
+			cp -r "$2/"$line "$(Prepare "$line" "$3/" "$5")"
+		done < "$conf_dir/filelist$1"
+	else
+		printf "Warning! No filelist is present, no action will be taken\n"
+	fi
+	
 }
 
 # ==============================================================================
@@ -367,7 +372,7 @@ Pull () {
 	Confirm "yes" "Pull dotfiles from \"$sysname\" to repository" && {
 		printf "\033[1;35m==> \033[0;1mProcessing \"%s\" files\n" "$sysname"
 
-		rm -rf "files$systag" && mkdir "files$systag"
+		rm -rf "$conf_dir/files$systag" && mkdir "$conf_dir/files$systag"
 		CopyFiles "$systag" "$HOME" "$conf_dir/files$systag" "Pulling"
 	}
 }
