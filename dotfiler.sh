@@ -88,12 +88,9 @@ EOF
 # ==============================================================================
 
 CreateFileList () {
-	vi "$conf_dir/filelist$1" || (
-					printf "\033[1;32m:: \033[0mSelect your editor: "
-					read -r editor
-					$editor "$conf_dir/filelist" || exit 1
-			)
-	
+	Confirm "yes" "Create a list of dotfiles to keep track of for $current_sys in $conf_dir" && {
+		"${EDITOR:-vi}" "$conf_dir/filelist$1"	
+	}
 }
 
 # ==============================================================================
@@ -466,7 +463,6 @@ conf_dir="$HOME/.dotfiler" #Default conf_dir
 while [ $# -gt 0 ]; do
 	case "$1" in
 		-c|--conf_dir)
-			operations="$operations""configure,"
 			conf_dir=$2
 			shift
 		;;
@@ -499,6 +495,7 @@ while [ $# -gt 0 ]; do
 done
 
 [ "$systems" = "" ] && systems="DOTFILER-DEFAULT-SYSTEM"
+[ -d $conf_dir ] || mkdir -p $conf_dir #Ensure conf_dir exists
 
 while [ "$operations" != "" ]; do
 	local_systems="$systems"
@@ -509,15 +506,10 @@ while [ "$operations" != "" ]; do
 	while [ "$local_systems" != "" ]; do
 		current_sys="$(Front "$local_systems")"
 		local_systems="$(Pop "$local_systems")"
-		( [ -f "$conf_dir/filelist$current_sys" ] ) 2>/dev/null || Confirm "yes" "Create a list of dotfiles to keep track of for $current_sys in $conf_dir" && {
-			CreateFileList $current_sys
-		}
-
+		current_systag="-$current_sys"
+		( [ -f "$conf_dir/filelist$current_systag" ] ) 2>/dev/null || CreateFileList $current_systag #Prompt if missing config
+		[ -d "$conf_dir/files$current_systag/" ] || mkdir -p "$conf_dir/files$current_systag" #Create files directory
 		case "$current_op" in
-			configure)
-				[ -d $conf_dir ] || mkdir -p $conf_dir
-				[ -d "$conf_dir/files/" ] || mkdir -p "$conf_dir/files"
-			;;
 			deploy)
 				Deploy "$current_sys"
 			;;
