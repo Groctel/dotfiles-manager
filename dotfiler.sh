@@ -11,10 +11,11 @@
 
 Help () {
 cat << EOF
-Usage: dotfiler.sh [-h] (-[dipu])+ [system-tags]
+Usage: dotfiler.sh [-h] [-c] (-[dipu])+ [system-tags]
 
 Operational arguments:
   -h, --help     Print a complete help text and exit.
+  -c, --conf_dir Change the working directory from $HOME/.dotfiler
   -d, --deploy   Deploys dotfiles to the system.
   -i, --install  Installs packages and configures the system.
   -p, --pull     Copies dotfiles into the repository.
