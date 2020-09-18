@@ -189,6 +189,7 @@ Pop () {
 CopyFiles () {
 	if [ -f "$conf_dir/filelist$1" ]; then
 		while read -r line; do
+			[ "$line" = '' ] && break
 			printf "\033[1;32m -> \033[0m%s %s\n" "$4" "$line";
 			cp -r "$2/"$line "$(Prepare "$line" "$3/" "$5")"
 		done < "$conf_dir/filelist$1"
