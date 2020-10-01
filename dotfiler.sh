@@ -304,6 +304,24 @@ Install () {
 		ChooseDistro "Install" "$systag"
 }
 
+
+InstallApt () {
+	if Confirm "yes" "Install with \"apt\" package manager"; then
+		git --version 1>/dev/null 2>&1 || sudo apt install git -y
+		xargs sudo apt install -y < "pkglist$1"
+	fi
+}
+
+InstallDnf () {
+	sudo dnf install -y < "pkglist$1"
+}
+
+InstallPacman () {
+	# try no root if sudo fails (if exec from root)
+	sudo pacman --noconfirm -S - < "pkglist$1" || \
+				pacman --noconfirm -S - < "pkglist$1"
+}
+
 InstallYay () {
 	git --version 1>/dev/null 2>&1 || sudo pacman --noconfirm -S git
 
@@ -319,23 +337,8 @@ InstallYay () {
 
 }
 
-InstallPacman () {
-	# try no root if sudo fails (if exec from root)
-	sudo pacman --noconfirm -S - < "pkglist$1" || \
-				pacman --noconfirm -S - < "pkglist$1"
-}
 
 
-InstallApt () {
-	if Confirm "yes" "Install with \"apt\" package manager"; then
-		git --version 1>/dev/null 2>&1 || sudo apt install git -y
-		xargs sudo apt install -y < "pkglist$1"
-	fi
-}
-
-InstallDnf () {
-	sudo dnf install -y < "pkglist$1"
-}
 
 # ==============================================================================
 # PULL FILES
@@ -391,13 +394,6 @@ Update () {
 		ChooseDistro "Update" "$systag"
 }
 
-UpdateYay () {
-	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
-}
-
-UpdatePacman () {
-	pacman -Qe | sed 's/ .*$//g' > "pkglist$1"
-}
 
 UpdateApt () {
 	apt-mark showmanual | sort -u > "manlist"
@@ -407,6 +403,15 @@ UpdateApt () {
 	comm -23 "manlist" "initlist" >"pkglist$1"
 	rm "manlist" "initlist"
 }
+
+UpdatePacman () {
+	pacman -Qe | sed 's/ .*$//g' > "pkglist$1"
+}
+
+UpdateYay () {
+	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
+}
+
 
 # ==============================================================================
 # EXTRA DEPENDENCIES
