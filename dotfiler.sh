@@ -193,20 +193,18 @@ CopyFiles () {
 # ==============================================================================
 
 ChooseDistro () {
-	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
 
-	case "$distro" in
-	arch)
-		operation="$1""Arch"
-	;;
-	ubuntu)
-		operation="$1""Ubuntu"
-	;;
-	*)
-		printf "\033[1;31mNo package manager configured for %s.\033[0m\n" \
-	          "$distro"
-	;;
-	esac
+	if $(which yay &> /dev/null); then
+		operation="$1""Yay"
+	elif $(which pacman &> /dev/null); then
+		operation="$1""Pacman"
+	elif $(which apt &> /dev/null); then
+		operation="$1""Apt"
+	elif $(which dnf &> /dev/null); then
+		operation="$1""Dnf"
+	else
+		printf "\033[1;31mNo package manager found for %s.\033[0m\n"
+	fi
 
 	$operation "$2"
 }
@@ -306,30 +304,41 @@ Install () {
 		ChooseDistro "Install" "$systag"
 }
 
-InstallArch () {
-	if Confirm "yes" "Install with \"yay\" the AUR manager"; then
-		git --version 1>/dev/null 2>&1 || sudo pacman --noconfirm -S git
 
-		pacman -Q yay >/dev/null || {
-			rm -rf yay 1>/dev/null 2>&1
-			git clone https://aur.archlinux.org/yay.git
-			cd yay && makepkg --noconfirm -si && cd ..
-			rm -rf yay;
-		}
-
-		yay --noconfirm --answerclean All --answerdiff None --answeredit None \
-		    --needed -S - < "pkglist$1"
-	else
-		sudo pacman --noconfirm -S - < "pkglist$1"
-	fi
-}
-
-InstallUbuntu () {
+InstallApt () {
 	if Confirm "yes" "Install with \"apt\" package manager"; then
 		git --version 1>/dev/null 2>&1 || sudo apt install git -y
 		xargs sudo apt install -y < "pkglist$1"
 	fi
 }
+
+InstallDnf () {
+	sudo dnf install -y < "pkglist$1"
+}
+
+InstallPacman () {
+	# try no root if sudo fails (if exec from root)
+	sudo pacman --noconfirm -S - < "pkglist$1" || \
+				pacman --noconfirm -S - < "pkglist$1"
+}
+
+InstallYay () {
+	git --version 1>/dev/null 2>&1 || sudo pacman --noconfirm -S git
+
+	pacman -Q yay >/dev/null || {
+		rm -rf yay 1>/dev/null 2>&1
+		git clone https://aur.archlinux.org/yay.git
+		cd yay && makepkg --noconfirm -si && cd ..
+		rm -rf yay;
+	}
+
+	yay --noconfirm --answerclean All --answerdiff None --answeredit None \
+	    --needed -S - < "pkglist$1"
+
+}
+
+
+
 
 # ==============================================================================
 # PULL FILES
@@ -385,11 +394,8 @@ Update () {
 		ChooseDistro "Update" "$systag"
 }
 
-UpdateArch () {
-	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
-}
 
-UpdateUbuntu () {
+UpdateApt () {
 	apt-mark showmanual | sort -u > "manlist"
 	gzip -dc /var/log/installer/initial-status.gz \
 		| sed -n 's/^Package: //p' \
@@ -397,6 +403,15 @@ UpdateUbuntu () {
 	comm -23 "manlist" "initlist" >"pkglist$1"
 	rm "manlist" "initlist"
 }
+
+UpdatePacman () {
+	pacman -Qe | sed 's/ .*$//g' > "pkglist$1"
+}
+
+UpdateYay () {
+	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
+}
+
 
 # ==============================================================================
 # EXTRA DEPENDENCIES
