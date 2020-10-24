@@ -91,5 +91,5 @@ Will run the following tasks:
 
 ### CAVEATS:
 
-This program only keeps track of your packages with `pacman` and `yay` on Arch or `apt` on Ubuntu.
+This program only keeps track of your packages with `pacman` and `yay` on Arch (and derivates), `apt` on Debian (or derivates) or `dnf` on Red Hat (or derivates).
 Pull request the project to add support other managers.
