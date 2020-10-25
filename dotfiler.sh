@@ -106,7 +106,8 @@ Confirm () {
 	;;
 	esac
 
-	while [ $answer -eq -1 ]; do
+	while [ $answer -eq -1 ]
+	do
 		read -r yn
 
 		case $yn in
@@ -143,7 +144,6 @@ Confirm () {
 # == Returns ==
 # - FRONT: The first item of the array.
 # - POP: The array with the first item removed.
-#
 
 Front () {
 	echo "$1" | sed 's/, */\n/g' | sed 'q;d'
@@ -166,38 +166,52 @@ Pop () {
 # - $5 -> String : Optional overwrite string to rename destination files
 
 CopyFiles () {
-	while read -r line; do
+	while read -r line
+	do
 		printf "\033[1;32m -> \033[0m%s %s\n" "$4" "$line";
 		cp -r "$2/"$line "$(Prepare "$line" "$3/" "$5")"
 	done < "filelist$1"
 }
 
-# == CHOOSE DISTRO ==
+# == FIND PACKAGE MANAGER ==
 #
-# Gets the distro ID string from /etc/os-release and composes the distro
-# specific function call with the distro name and the function prefix, then
-# calls it. It basically holds the distro switches in one place with a kind of
-# lambda function structure if you want to call it that.
+# Finds the package manager installed in the system.
+#
+# == Args ==
+# - $@ -> Strings : All package managers to try ordered by preference
+#
+# == Returns ==
+# The package manager found in the system, first letter capitalised.
+
+FindManager () {
+	while [ $# -gt 0 ] && [ "$manager" = "" ]
+	do
+		which "$1" 1>/dev/null 2>&1 &&
+			manager="$(echo "$1" | sed 's/^./\U&/')"
+		shift
+	done
+
+	echo "$manager"
+}
+
+# == CHOOSE PACKAGE MANAGER ==
+#
+# Uses a lambda function structure to call the appropriate package manager and
+# perform the specified action.
 #
 # == Args ==
 # - $1 -> String : Operation to compose the function call with
 # - $2 -> String : The system tag
 
-ChooseDistro () {
+ChoosePkgMgr () {
+	manager="$(FindManager "apt" "dnf" "yay" "pacman")"
 
-	if $(which yay &> /dev/null); then
-		operation="$1""Yay"
-	elif $(which pacman &> /dev/null); then
-		operation="$1""Pacman"
-	elif $(which apt &> /dev/null); then
-		operation="$1""Apt"
-	elif $(which dnf &> /dev/null); then
-		operation="$1""Dnf"
+	if [ "$manager" = "" ]
+	then
+		printf "\033[1;31mYour package manager is not configured.\033[0m\n"
 	else
-		printf "\033[1;31mNo package manager found for %s.\033[0m\n"
+		$1$manager "$2"
 	fi
-
-	$operation "$2"
 }
 
 # == PREPARE ==
@@ -268,7 +282,6 @@ Deploy () {
 # - $1 -> String : The system tag
 
 Install () {
-	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
 	sysname="$1"
 	systag="-$1"
 
@@ -286,15 +299,15 @@ Install () {
 	}
 
 	Confirm "no" "Proceed with the $sysname packages installation" &&
-		ChooseDistro "Install" "$systag"
+		ChoosePkgMgr "Install" "$systag"
 }
 
 
 InstallApt () {
-	if Confirm "yes" "Install with \"apt\" package manager"; then
+	Confirm "yes" "Install with \"apt\" package manager" && {
 		git --version 1>/dev/null 2>&1 || sudo apt install git -y
 		xargs sudo apt install -y < "pkglist$1"
-	fi
+	}
 }
 
 InstallDnf () {
@@ -302,15 +315,12 @@ InstallDnf () {
 }
 
 InstallPacman () {
-	# try no root if sudo fails (if exec from root)
-	sudo pacman --noconfirm -S - < "pkglist$1" || \
-				pacman --noconfirm -S - < "pkglist$1"
+	sudo pacman --noconfirm -S - < "pkglist$1"
 }
 
 InstallYay () {
-	git --version 1>/dev/null 2>&1 || sudo pacman --noconfirm -S git
-
-	pacman -Q yay >/dev/null || {
+	pacman -Q yay 1>/dev/null 2>&1 || {
+		git --version 1>/dev/null 2>&1 || sudo pacman --noconfirm -S git
 		rm -rf yay 1>/dev/null 2>&1
 		git clone https://aur.archlinux.org/yay.git
 		cd yay && makepkg --noconfirm -si && cd ..
@@ -319,7 +329,6 @@ InstallYay () {
 
 	yay --noconfirm --answerclean All --answerdiff None --answeredit None \
 	    --needed -S - < "pkglist$1"
-
 }
 
 # == PULL FILES ==
@@ -369,9 +378,8 @@ Update () {
 	}
 
 	Confirm "yes" "Update \"$sysname\" package list" &&
-		ChooseDistro "Update" "$systag"
+		ChoosePkgMgr "Update" "$systag"
 }
-
 
 UpdateApt () {
 	apt-mark showmanual | sort -u > "manlist"
@@ -414,7 +422,8 @@ Extra () {
 	printf "\033[1;35m==> \033[0;1mProcessing \"%s\" dependencies\n\033[0m" \
 	       "$sysname"
 
-	while read -r line; do
+	while read -r line
+	do
 		sh -c "$line"
 	done < "deplist$systag"
 
@@ -431,68 +440,72 @@ systems=""
 
 [ $# -eq 0 ] && Help && exit 1
 
-while [ $# -gt 0 ]; do
+while [ $# -gt 0 ]
+do
 	case "$1" in
-		-d|--deploy)
-			operations="$operations""deploy,"
-		;;
-		-h|--help)
-			Help "full" && exit 0
-		;;
-		-i|--install)
-			operations="$operations""install,"
-		;;
-		-p|--pull)
-			operations="$operations""pull,"
-		;;
-		-u|--update)
-			operations="$operations""update,"
-		;;
-		-x|--extra)
-			operations="$operations""extra,"
-		;;
-		[!-]*)
-			systems="$systems""$1,"
-		;;
-		*)
-			Help && exit 1
-		;;
+	-d|--deploy)
+		operations="$operations""deploy,"
+	;;
+	-h|--help)
+		Help "full" && exit 0
+	;;
+	-i|--install)
+		operations="$operations""install,"
+	;;
+	-p|--pull)
+		operations="$operations""pull,"
+	;;
+	-u|--update)
+		operations="$operations""update,"
+	;;
+	-x|--extra)
+		operations="$operations""extra,"
+	;;
+	[!-]*)
+		systems="$systems""$1,"
+	;;
+	*)
+		Help && exit 1
+	;;
 	esac
 	shift
 done
 
 [ "$systems" = "" ] && systems="DOTFILER-DEFAULT-SYSTEM"
 
-while [ "$operations" != "" ]; do
+while [ "$operations" != "" ]
+do
 	local_systems="$systems"
 
 	current_op="$(Front "$operations")"
 	operations="$(Pop "$operations")"
 
-	while [ "$local_systems" != "" ]; do
+	while [ "$local_systems" != "" ]
+	do
 		current_sys="$(Front "$local_systems")"
 		local_systems="$(Pop "$local_systems")"
 
 		case "$current_op" in
-			deploy)
-				Deploy "$current_sys"
-			;;
-			install)
-				Install "$current_sys"
-			;;
-			pull)
-				Pull "$current_sys"
-			;;
-			update)
-				Update "$current_sys"
-			;;
-			extra)
-				Extra "$current_sys"
-			;;
-			*)
-				printf "\033[1;31m==> Illegal operation \"%s\". Aborting...\033[0m\n" \
-				       "$current_op"
-				exit 1
+		deploy)
+			Deploy "$current_sys"
+		;;
+		install)
+			Install "$current_sys"
+		;;
+		pull)
+			Pull "$current_sys"
+		;;
+		update)
+			Update "$current_sys"
+		;;
+		extra)
+			Extra "$current_sys"
+		;;
+		*)
+			printf "\033[1;31m==> Illegal operation \"%s\". Aborting...\033[0m\n" \
+				"$current_op"
+			exit 1
+		;;
 		esac
 	done
 done
