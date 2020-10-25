@@ -1,13 +1,11 @@
 #!/bin/sh
 
-# ==============================================================================
-# DOTFILER
-# ------------------------------------------------------------------------------
+# === DOTFILER ===
+#
 # A POSIX shell program to keep your dotfiles up to date in a repository.
-# ------------------------------------------------------------------------------
+#
 # THIS PROGRAM IS LICENCED UNDER THE GNU GENERAL PUBLIC LICENCE V2.0. PLEASE
 # READ THE LICENCE HERE: https://opensource.org/licenses/gpl-2.0.php
-# ==============================================================================
 
 Help () {
 cat << EOF
@@ -78,22 +76,20 @@ EOF
 }
 }
 
-# ==============================================================================
-# CONFIRM
-# ------------------------------------------------------------------------------
+# == CONFIRM ==
+#
 # Prompts the user with a yes/no question. If priority for "yes" or "no" is
 # specified, an empty string or any answer other than the not prioritised one
 # will be interpreted as the prioritised one.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : Either "yes" or "no" to set the answer priority or the
 #                  question string if no priority is specified.
 # - $2 -> String : The question string if priority is specified.
-# ------------------------------------------------------------------------------
-# RETURNS:
+#
+# == Returns ==
 # EXIT_SUCCESS (0) is "yes" was answered and EXIT_FAILURE (1) otherwise, so that
 # the function can be used with && and ||.
-# ==============================================================================
 
 Confirm () {
 	answer=-1
@@ -136,19 +132,18 @@ Confirm () {
 	return $answer
 }
 
-# ==============================================================================
-# ARRAY FUNCTIONS
-# ------------------------------------------------------------------------------
+# == ARRAY FUNCTIONS ==
+#
 # - FRONT: Reads the first item of a comma separated string array.
 # - POP: Removes the first item from a comma separated string array.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : The comma separated string array
-# ------------------------------------------------------------------------------
-# RETURNS:
+#
+# == Returns ==
 # - FRONT: The first item of the array.
 # - POP: The array with the first item removed.
-# ==============================================================================
+#
 
 Front () {
 	echo "$1" | sed 's/, */\n/g' | sed 'q;d'
@@ -158,19 +153,17 @@ Pop () {
 	echo "$1" | sed 's/^,\?[^,]*,\? *//g'
 }
 
-# ==============================================================================
-# COPYFILES
-# ------------------------------------------------------------------------------
+# == COPY FILES ==
+#
 # Reads files from a text file and copies them in the root destination
 # directory.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : System files to be read and copied
 # - $2 -> String : Source root firectory of files
 # - $3 -> String : Destination root firectory of files
 # - $4 -> String : Operation name to print on screen
 # - $5 -> String : Optional overwrite string to rename destination files
-# ==============================================================================
 
 CopyFiles () {
 	while read -r line; do
@@ -179,18 +172,16 @@ CopyFiles () {
 	done < "filelist$1"
 }
 
-# ==============================================================================
-# CHOOSE DISTRO
-# ==============================================================================
+# == CHOOSE DISTRO ==
+#
 # Gets the distro ID string from /etc/os-release and composes the distro
 # specific function call with the distro name and the function prefix, then
 # calls it. It basically holds the distro switches in one place with a kind of
 # lambda function structure if you want to call it that.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : Operation to compose the function call with
 # - $2 -> String : The system tag
-# ==============================================================================
 
 ChooseDistro () {
 
@@ -209,20 +200,18 @@ ChooseDistro () {
 	$operation "$2"
 }
 
-# ==============================================================================
-# PREPARE
-# ------------------------------------------------------------------------------
+# == PREPARE ==
+#
 # Reads a line and creates a directory in the destination directory if required.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : Line to be read
 # - $2 -> String : Destination root directory of files
 # - $3 -> String : Optional overwrite string to rename destination files
-# ------------------------------------------------------------------------------
-# RETURNS:
+#
+# == Returns ==
 # The line's file name or parent directory name suffixed by the overwrite
 # string, which might be empty.
-# ==============================================================================
 
 Prepare () {
 	case "$1" in
@@ -238,16 +227,14 @@ Prepare () {
 	echo "$2$path"
 }
 
-# ==============================================================================
-# DEPLOY FILES
-# ------------------------------------------------------------------------------
+# == DEPLOY FILES ==
+#
 # Reads the appropriate filelist file and deploys the specified files to the
 # host's $HOME directory. If the user denies overwriting, it makes CopyFiles
 # create ".new" files and directories instead.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : The target system string
-# ==============================================================================
 
 Deploy () {
 	overwrite=""
@@ -267,20 +254,18 @@ Deploy () {
 	}
 }
 
-# ==============================================================================
-# INSTALL PACKAGES
-# ------------------------------------------------------------------------------
+# == INSTALL PACKAGES ==
+#
 # Reads the appropriate pkglist file and installs the specified packages in the
 # host's system with their distro's manager. It allows the user to  review the
 # packages they're going to install before doing do. Below this function are all
 # distro subfunctions.
-# ------------------------------------------------------------------------------
-# ARGS (INSTALL):
+#
+# == Args (Install) ==
 # - $1 -> String : The target system string
-# ------------------------------------------------------------------------------
-# ARGS (INSTALL [DISTRO]):
+#
+# == Args (InstallManager) ==
 # - $1 -> String : The system tag
-# ==============================================================================
 
 Install () {
 	distro="$(grep "^ID=" /etc/os-release | sed 's/ID=//g')"
@@ -337,18 +322,13 @@ InstallYay () {
 
 }
 
-
-
-
-# ==============================================================================
-# PULL FILES
-# ------------------------------------------------------------------------------
+# == PULL FILES ==
+#
 # Reads the appropriate filelist file and pulls the specified files to the
 # corresponding files directory.
-# ------------------------------------------------------------------------------
-# ARGS:
+#
+# == Args ==
 # - $1 -> String : The target system string
-# ==============================================================================
 
 Pull () {
 	sysname="$1"
@@ -367,19 +347,17 @@ Pull () {
 	}
 }
 
-# ==============================================================================
-# UPDATE PACKAGES
-# ------------------------------------------------------------------------------
+# == UPDATE PACKAGES ==
+#
 # Updates the appropriate pkglist filewith the packages explicitly installed in
 # the host's system using their distro's manager. Below this function are all
 # distro subfunctions.
-# ------------------------------------------------------------------------------
-# ARGS (UPDATE):
+#
+# == Args (update) ==
 # - $1 -> String : The target system string
-# ------------------------------------------------------------------------------
-# ARGS (UPDATE [DISTRO]):
+#
+# == Args (UpdateDistro) ==
 # - $1 -> String : The system tag
-# ==============================================================================
 
 Update () {
 	sysname="$1"
@@ -412,18 +390,15 @@ UpdateYay () {
 	yay -Qe | sed 's/ .*$//g' > "pkglist$1"
 }
 
-
-# ==============================================================================
-# EXTRA DEPENDENCIES
-# ------------------------------------------------------------------------------
+# == EXTRA DEPENDENCIES ==
+#
 # Reads the appropriate deplist file and runs the specified commands to install
 # the extra dependencies required by the system. It also resets the terminal
 # emulators settings in case some of the operations messed with it, which can
-# happen when calling Vim.
-# ------------------------------------------------------------------------------
-# ARGS:
+# happen when calling other programs such as Vim.
+#
+# == Args ==
 # - $1 -> String : The target system string
-# ==============================================================================
 
 Extra () {
 	old_stty_settings="$(stty -g)"
@@ -446,12 +421,10 @@ Extra () {
 	stty "$old_stty_settings" 1>/dev/null 2>&1
 }
 
-# ==============================================================================
-# MAIN
-# ------------------------------------------------------------------------------
+# == MAIN ==
+#
 # Handles the execution of the program based on the args provided to it. See the
 # help text to learn about the arguments Dotfiler takes.
-# ==============================================================================
 
 operations=""
 systems=""
