@@ -291,7 +291,7 @@ Install () {
 	}
 
 	Confirm "yes" "Review packages list (it will be permanently modified)" && {
-	${EDITOR:-vi}"pkglist$systag" || (
+	${EDITOR:-vi} "pkglist$systag" || (
 			printf "\033[1;32m:: \033[0mSelect your editor: "
 			read -r editor
 			$editor "pkglist$systag" || exit 1
